@@ -1,0 +1,8 @@
+# Rust
+/target
+
+# Environment
+.env
+
+# Outputs
+*.xlsx

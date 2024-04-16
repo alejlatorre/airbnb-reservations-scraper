@@ -1,0 +1,29 @@
+version: "3"
+
+tasks:
+  setup:
+    desc: Setup the project
+    cmds:
+      - |
+        brew install mingw-w64
+        rustup target add x86_64-pc-windows-gnu
+
+  check-targets:
+    desc: Check the available targets
+    cmds:
+      - rustup target list
+
+  build:
+    desc: Build the project (default Darwin ARM64)
+    cmds:
+      - cargo build --verbose
+
+  release:
+    desc: Build the project (default Darwin ARM64)
+    cmds:
+      - cargo build --release --verbose
+
+  build-windows:
+    desc: Build the project for Windows x86_64
+    cmds:
+      - cargo build --target=x86_64-pc-windows-gnu --verbose

@@ -6,3 +6,5 @@
 
 # Outputs
 *.xlsx
+*.csv
+.DS_Store

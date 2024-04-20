@@ -1,11 +1,12 @@
 mod helpers;
 mod models;
 use helpers::excel::write_to_excel_file;
-use models::reservation::Reservation;
+use models::reservation::{Reservation, ReservationTable};
 
 use chrono::{DateTime, Local};
 use crossterm::event;
 use dotenv::dotenv;
+use polars::prelude::*;
 use reqwest::blocking::Client;
 use reqwest::header;
 use serde_json::Value;
@@ -14,7 +15,7 @@ use std::env;
 use std::io::Write;
 use std::io::{self, stdin};
 
-fn get_data(min_date: &str) -> Result<String, reqwest::Error> {
+fn get_data(min_date: &str) -> Result<(String, Vec<Reservation>), reqwest::Error> {
     dotenv().ok();
     let client = Client::new();
 
@@ -133,7 +134,81 @@ fn get_data(min_date: &str) -> Result<String, reqwest::Error> {
     let filename: String = format!("reservations_{}.xlsx", now.format("%Y%m%d%H%M%S"));
     write_to_excel_file(&filename, &reservations).expect("Failed to write to file");
 
-    Ok(filename.to_string())
+    Ok((filename.to_string(), reservations))
+}
+
+fn row_to_column_structure(data: Vec<Reservation>) -> ReservationTable {
+    let mut table = ReservationTable::default();
+    for record in data {
+        table.confirmation_code.push(record.confirmation_code);
+        table.status.push(record.status);
+        table.guest_user_full_name.push(record.guest_user_full_name);
+        table.guest_user_phone.push(record.guest_user_phone);
+        table
+            .guest_details_number_of_adults
+            .push(record.guest_details_number_of_adults);
+        table
+            .guest_details_number_of_children
+            .push(record.guest_details_number_of_children);
+        table
+            .guest_details_number_of_infants
+            .push(record.guest_details_number_of_infants);
+        table.start_date.push(record.start_date);
+        table.end_date.push(record.end_date);
+        table.nights.push(record.nights);
+        table.booked_date.push(record.booked_date);
+        table.listing_name.push(record.listing_name);
+        table.earnings.push(record.earnings);
+    }
+    return table;
+}
+
+fn column_to_series_structure(table: ReservationTable) -> Vec<Series> {
+    let confirmation_code_series = Series::new("confirmation_code", table.confirmation_code);
+    let status_series = Series::new("status", table.status);
+    let guest_user_full_name_series =
+        Series::new("guest_user_full_name", table.guest_user_full_name);
+    let guest_user_phone_series = Series::new("guest_user_phone", table.guest_user_phone);
+    let guest_details_number_of_adults_series = Series::new(
+        "guest_details_number_of_adults",
+        table.guest_details_number_of_adults,
+    );
+    let guest_details_number_of_children_series = Series::new(
+        "guest_details_number_of_children",
+        table.guest_details_number_of_children,
+    );
+    let guest_details_number_of_infants_series = Series::new(
+        "guest_details_number_of_infants",
+        table.guest_details_number_of_infants,
+    );
+    let start_date_series = Series::new("start_date", table.start_date);
+    let end_date_series = Series::new("end_date", table.end_date);
+    let nights_series = Series::new("nights", table.nights);
+    let booked_date_series = Series::new("booked_date", table.booked_date);
+    let listing_name_series = Series::new("listing_name", table.listing_name);
+    let earnings_series = Series::new("earnings", table.earnings);
+
+    vec![
+        confirmation_code_series,
+        status_series,
+        guest_user_full_name_series,
+        guest_user_phone_series,
+        guest_details_number_of_adults_series,
+        guest_details_number_of_children_series,
+        guest_details_number_of_infants_series,
+        start_date_series,
+        end_date_series,
+        nights_series,
+        booked_date_series,
+        listing_name_series,
+        earnings_series,
+    ]
+}
+
+fn process_data(data: Vec<Reservation>) -> Result<DataFrame, PolarsError> {
+    let table = row_to_column_structure(data);
+    let df = DataFrame::new(column_to_series_structure(table))?;
+    Ok(df)
 }
 
 fn main() {
@@ -146,8 +221,12 @@ fn main() {
         .expect("Failed to read line");
     println!("{}", min_date);
 
-    let output_filepath: String = get_data(&min_date).expect("Failed to get data");
+    let (output_filepath, data) = get_data(&min_date).expect("Failed to get data");
     println!("Data has been written in {}", output_filepath);
+
+    let df: DataFrame = process_data(data).expect("Failed to process data");
+    println!("{:?}", df);
+
     println!("Press any key to close...");
     io::stdout().flush().expect("Failed to flush stdout");
 

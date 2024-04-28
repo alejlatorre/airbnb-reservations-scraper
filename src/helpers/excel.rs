@@ -1,5 +1,6 @@
 use crate::models::reservation::Reservation;
-
+use calamine::{open_workbook_auto, Reader};
+use polars::prelude::*;
 use xlsxwriter::format::Format;
 use xlsxwriter::{Workbook, Worksheet, XlsxError};
 
@@ -64,4 +65,54 @@ pub fn write_to_excel_file(
     }
 
     workbook.close()
+}
+
+pub fn open_csv(filename: &str) -> Result<DataFrame, PolarsError> {
+    let df = CsvReader::from_path(filename)?.has_header(true).finish()?;
+    Ok(df)
+}
+
+pub fn open_xlsx(filename: &str, sheet_name: &str) -> Result<DataFrame, PolarsError> {
+    // Open workbook and define sheet
+    let mut workbook = open_workbook_auto(filename).expect("Failed to open workbook");
+    let worksheet = workbook
+        .worksheet_range(sheet_name)
+        .expect("Failed to open worksheet");
+
+    // Schema
+    let mut headers = Vec::new();
+    let mut records = Vec::new();
+
+    // Get rows and columns
+    for (i, row) in worksheet.rows().enumerate() {
+        if i == 0 {
+            headers = row.iter().map(|column| column.to_string()).collect();
+        } else {
+            let record: Vec<_> = row
+                .iter()
+                .map(|cell| match cell {
+                    calamine::Data::String(s) => s.clone(),
+                    calamine::Data::Float(f) => f.to_string(),
+                    calamine::Data::DateTime(f) => f.to_string(),
+                    calamine::Data::Int(i) => i.to_string(),
+                    calamine::Data::Bool(b) => b.to_string(),
+                    calamine::Data::Error(e) => e.to_string(),
+                    calamine::Data::Empty => "".to_string(),
+                    _ => cell.to_string(),
+                })
+                .collect();
+            records.push(record);
+        }
+    }
+
+    let mut series = Vec::with_capacity(headers.len());
+    for (i, header) in headers.iter().enumerate() {
+        let data: Vec<String> = records.iter().map(|record| record[i].clone()).collect();
+        let s: Series = Series::new(header, data);
+        series.push(s);
+    }
+
+    let _df = DataFrame::new(series).expect("Failed to create dataframe");
+
+    Ok(_df)
 }

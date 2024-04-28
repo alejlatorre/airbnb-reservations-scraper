@@ -4,7 +4,16 @@
 # Environment
 .env
 
+# Random
+*.rtf
+
 # Outputs
 *.xlsx
 *.csv
 .DS_Store
+
+# Python
+notebooks/
+.tool-versions
+.venv
+requirements.txt

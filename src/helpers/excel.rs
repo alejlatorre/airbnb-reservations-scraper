@@ -1,5 +1,6 @@
 use crate::models::reservation::Reservation;
 use calamine::{open_workbook_auto, Reader};
+use polars::datatypes as dtype;
 use polars::prelude::*;
 use xlsxwriter::format::Format;
 use xlsxwriter::{Workbook, Worksheet, XlsxError};
@@ -64,6 +65,67 @@ pub fn write_to_excel_file(
         worksheet.write_string(row, 12, &reservation.earnings, None)?;
     }
 
+    workbook.close()
+}
+
+pub fn write_to_excel_file_refac(filename: &str, data: DataFrame) -> Result<(), XlsxError> {
+    let workbook: Workbook = Workbook::new(filename)?;
+    let mut worksheet: Worksheet = workbook.add_worksheet(None)?;
+
+    // Write headers
+    worksheet.write_string(0, 0, "Confirmation code", None)?;
+    worksheet.write_string(0, 1, "Status", None)?;
+    worksheet.write_string(0, 2, "Guest name", None)?;
+    worksheet.write_string(0, 3, "Contact", None)?;
+    worksheet.write_string(0, 4, "# of adults", None)?;
+    worksheet.write_string(0, 5, "# of children", None)?;
+    worksheet.write_string(0, 6, "# of infants", None)?;
+    worksheet.write_string(0, 7, "Start date", None)?;
+    worksheet.write_string(0, 8, "End date", None)?;
+    worksheet.write_string(0, 9, "# of nights", None)?;
+    worksheet.write_string(0, 10, "Booked", None)?;
+    worksheet.write_string(0, 11, "Listing", None)?;
+    worksheet.write_string(0, 12, "Earnings", None)?;
+    worksheet.write_string(0, 13, "Currency", None)?;
+    worksheet.write_string(0, 14, "Amount", None)?;
+    worksheet.write_string(0, 15, "Owner", None)?;
+    worksheet.write_string(0, 16, "Zone", None)?;
+    worksheet.write_string(0, 17, "Comission (%)", None)?;
+    worksheet.write_string(0, 18, "Comission (#)", None)?;
+
+    let row_count = data.height() as u32;
+    for i in 0..row_count {
+        let row = data.get(i as usize).unwrap();
+        row.iter().enumerate().for_each(|(col, cell)| {
+            match cell.dtype() {
+                dtype::DataType::String => worksheet.write_string(
+                    i + 1,
+                    col as u16,
+                    cell.to_string().trim_matches('"'),
+                    None,
+                ),
+                dtype::DataType::Int64 => worksheet.write_number(
+                    i + 1,
+                    col as u16,
+                    cell.to_string().parse::<f64>().unwrap(),
+                    None,
+                ),
+                dtype::DataType::Float64 => worksheet.write_number(
+                    i + 1,
+                    col as u16,
+                    cell.to_string().parse::<f64>().unwrap(),
+                    None,
+                ),
+                _ => worksheet.write_string(
+                    i + 1,
+                    col as u16,
+                    cell.to_string().trim_matches('"'),
+                    None,
+                ),
+            }
+            .expect("Failed to write cell")
+        });
+    }
     workbook.close()
 }
 

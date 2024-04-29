@@ -257,7 +257,7 @@ pub fn process_data(df: DataFrame) -> Result<DataFrame, PolarsError> {
 pub fn get_summary(df: DataFrame) -> Result<DataFrame, PolarsError> {
     let _df = df
         .lazy()
-        .group_by([col("Listing")])
+        .group_by([col("Listing"), col("Currency")])
         .agg([col("Amount").sum().alias("Total")])
         .sort(
             ["Total"],

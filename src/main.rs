@@ -5,8 +5,8 @@ mod helpers;
 mod models;
 use config::globals::CONFIG;
 use crossterm::event;
-use helpers::engine::process_data;
-use helpers::excel::{open_csv, open_xlsx, write_to_excel_file_refac};
+use helpers::engine::{get_data, get_dataframe, process_data};
+use helpers::excel::{open_xlsx, write_to_excel_file_refac};
 use polars::prelude::*;
 use std::collections::HashMap;
 use std::env;
@@ -45,15 +45,15 @@ fn main() {
         .expect("Failed to read line");
     println!("{}", min_date);
 
-    // let (output_filepath, data) = get_data(&min_date).expect("Failed to get data");
-    // println!("Data has been written in {}", output_filepath);
+    let (output_filepath, data) = get_data(&min_date).expect("Failed to get data");
+    println!("Data has been written in {}", output_filepath);
 
-    // let df: DataFrame = get_dataframe(data).expect("Failed to get dataframe");
-    // println!("{:?}", df);
+    let df: DataFrame = get_dataframe(data).expect("Failed to get dataframe");
+    println!("{:?}", df);
 
     // TODO: Delete in production
-    let df: DataFrame =
-        open_csv(&get_path(CONFIG.example_csv.as_str())).expect("Failed to load csv");
+    // let df: DataFrame =
+    // open_csv(&get_path(CONFIG.example_csv.as_str())).expect("Failed to load csv");
     //
 
     let processed_df: DataFrame = process_data(df).expect("Failed to process data");
@@ -111,7 +111,7 @@ fn main() {
         .lazy()
         .join(
             aux_df.lazy(),
-            [col("Listing")],
+            [col("listing_name")],
             [col("ANUNCIO")],
             JoinArgs::new(JoinType::Left),
         )
@@ -121,7 +121,7 @@ fn main() {
                 .fill_null(base_comission)
                 .alias("Comision"),
         )
-        .with_column((col("Amount") * col("Comision")).alias("Ganancia"))
+        .with_column((col("amount") * col("Comision")).alias("commission_earnings"))
         .collect()
         .expect("Failed to join dataframes");
 

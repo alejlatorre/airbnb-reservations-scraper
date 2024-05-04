@@ -228,7 +228,7 @@ pub fn process_data(df: DataFrame) -> Result<DataFrame, PolarsError> {
     let mut currencies: Vec<&str> = Vec::new();
     let mut amounts: Vec<f64> = Vec::new();
 
-    for opt_s in df.column("Earnings").into_iter() {
+    for opt_s in df.column("earnings").into_iter() {
         let s = opt_s.str().unwrap();
         for s in s {
             let caps = pattern.captures(s.unwrap()).unwrap();
@@ -244,8 +244,8 @@ pub fn process_data(df: DataFrame) -> Result<DataFrame, PolarsError> {
         }
     }
 
-    let currency_series = Series::new("Currency", currencies);
-    let amount_series = Series::new("Amount", amounts);
+    let currency_series = Series::new("currency", currencies);
+    let amount_series = Series::new("amount", amounts);
 
     let _df = df
         .hstack(&[currency_series, amount_series])
@@ -257,10 +257,10 @@ pub fn process_data(df: DataFrame) -> Result<DataFrame, PolarsError> {
 pub fn get_summary(df: DataFrame) -> Result<DataFrame, PolarsError> {
     let _df = df
         .lazy()
-        .group_by([col("Listing"), col("Currency")])
-        .agg([col("Amount").sum().alias("Total")])
+        .group_by([col("listing"), col("currency")])
+        .agg([col("amount").sum().alias("total")])
         .sort(
-            ["Total"],
+            ["total"],
             SortMultipleOptions::new().with_order_descending(true),
         )
         .collect()?;

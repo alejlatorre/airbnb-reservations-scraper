@@ -1,24 +1,70 @@
 use super::excel::write_to_excel_file;
 use crate::models::reservation::{Reservation, ReservationTable};
+use aws_credential_types::Credentials;
+use aws_sdk_ssm::{config::Region, Client as ssm_client, Config};
 use chrono::{DateTime, Local};
 use dotenv::dotenv;
 use polars::prelude::*;
 use regex::Regex;
-use reqwest::blocking::Client;
+use reqwest::blocking::Client as req_client;
 use reqwest::header;
 use reqwest::StatusCode;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::env;
 use std::process;
+use tokio::runtime::Runtime;
 
 pub fn get_data(min_date: &str) -> Result<(String, Vec<Reservation>), reqwest::Error> {
     dotenv().ok();
-    let client = Client::new();
-
     // Environment variables
-    let _aat = env::var("_AAT").expect("AAT is not set");
-    let airbnb_api_key = env::var("AIRBNB_API_KEY").expect("AIRBNB_API_KEY is not set");
+    let ssm_prefix = env::var("SSM_PREFIX").expect("SSM_PREFIX is not set");
+
+    // Hardcoded keys
+    let access_key_id = "";
+    let secret_access_key = "";
+
+    // Import variables from AWS SSM
+    let credentials = Credentials::from_keys(access_key_id, secret_access_key, None);
+    let config = Config::builder()
+        .credentials_provider(credentials)
+        .region(Region::new("us-east-1"))
+        .behavior_version_latest()
+        .build();
+    let client = ssm_client::from_conf(config);
+    let response = Runtime::new().unwrap().block_on(async {
+        client
+            .get_parameters_by_path()
+            .path(&ssm_prefix)
+            .send()
+            .await
+    });
+
+    let mut _params: HashMap<String, String> = HashMap::new();
+    for param in response.unwrap().parameters.unwrap() {
+        _params.insert(
+            param.name.unwrap().to_string(),
+            param.value.unwrap().to_string(),
+        );
+    }
+
+    let _enable: String = _params
+        .get(format!("{}/{}", ssm_prefix, "ENABLE").as_str())
+        .unwrap()
+        .to_string();
+    if _enable != "true" {
+        println!("The service is disabled");
+        process::exit(1);
+    }
+
+    let _aat: String = _params
+        .get(format!("{}/{}", ssm_prefix, "_AAT").as_str())
+        .unwrap()
+        .to_string();
+    let airbnb_api_key: String = _params
+        .get(format!("{}/{}", ssm_prefix, "AIRBNB_API_KEY").as_str())
+        .unwrap()
+        .to_string();
 
     // Cookies
     let cookies = format!("country=PE; _aat={}", _aat);
@@ -56,12 +102,13 @@ pub fn get_data(min_date: &str) -> Result<(String, Vec<Reservation>), reqwest::E
     let mut page: i64 = 1;
     let mut reservations: Vec<Reservation> = Vec::new();
 
+    let req_client = req_client::new();
     loop {
         let offset_value: String = _offset.to_string();
         query_params.insert("_offset".to_string(), offset_value);
         // println!("{:?}", query_params);
 
-        let response = client
+        let response = req_client
             .get("https://www.airbnb.com/api/v2/reservations")
             .headers(headers.clone())
             .query(&query_params)

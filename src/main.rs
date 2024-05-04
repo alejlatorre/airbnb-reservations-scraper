@@ -38,29 +38,19 @@ fn main() {
 
     let mut min_date = String::new();
     print!("Enter a search date: ");
-    // If ends before search date or starts after search date, it won't be included
     io::stdout().flush().expect("Failed to flush stdout");
     stdin()
         .read_line(&mut min_date)
         .expect("Failed to read line");
     println!("{}", min_date);
 
+    println!("Starting extraction step...");
     let (output_filepath, data) = get_data(&min_date).expect("Failed to get data");
-    println!("Data has been written in {}", output_filepath);
+    println!("Data has been extracted and written in {}", output_filepath);
 
+    println!("Starting processing step...");
     let df: DataFrame = get_dataframe(data).expect("Failed to get dataframe");
-    println!("{:?}", df);
-
-    // TODO: Delete in production
-    // let df: DataFrame =
-    // open_csv(&get_path(CONFIG.example_csv.as_str())).expect("Failed to load csv");
-    //
-
     let processed_df: DataFrame = process_data(df).expect("Failed to process data");
-    println!("{:?}", processed_df.head(Some(5)));
-
-    // TODO: Use in case is needed
-    // let summarized_df: DataFrame = get_summary(processed_df).expect("Failed to summarize data");
 
     // Auxiliar dataframes
     let mut hm_dataframes: HashMap<&str, DataFrame> = HashMap::new();
@@ -125,10 +115,14 @@ fn main() {
         .collect()
         .expect("Failed to join dataframes");
 
-    println!("{:?}", cons_df.head(Some(5)));
-
-    write_to_excel_file_refac(&get_path(CONFIG.output_file.as_str()), cons_df)
+    let _output_filepath = get_path(CONFIG.output_file.as_str());
+    write_to_excel_file_refac(&_output_filepath, cons_df.clone())
         .expect("Failed to generate Excel");
+
+    println!("Data has been processed...");
+    println!("The Excel file was generated in {}", _output_filepath);
+    println!("Showing the first 5 rows...");
+    println!("{:?}", cons_df.head(Some(5)));
 
     println!("Press any key to close...");
     io::stdout().flush().expect("Failed to flush stdout");

@@ -1,8 +1,8 @@
 use super::excel::write_to_excel_file;
+use crate::config::globals::CONFIG;
 use crate::models::reservation::{Reservation, ReservationTable};
 use aws_credential_types::Credentials;
 use aws_sdk_ssm::{config::Region, Client as ssm_client, Config};
-use chrono::{DateTime, Local};
 use dotenv::dotenv;
 use polars::prelude::*;
 use regex::Regex;
@@ -188,8 +188,11 @@ pub fn get_data(min_date: &str) -> Result<(String, Vec<Reservation>), reqwest::E
         _offset += delta;
     }
 
-    let now: DateTime<Local> = Local::now();
-    let filename: String = format!("reservations_{}.xlsx", now.format("%Y%m%d%H%M%S"));
+    let filename: String = format!(
+        "{}_{}.xlsx",
+        CONFIG.output_file_prefix_1.as_str(),
+        CONFIG.datetime_suffix.as_str()
+    );
     write_to_excel_file(&filename, &reservations).expect("Failed to write to file");
 
     Ok((filename.to_string(), reservations))

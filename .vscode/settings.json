@@ -20,6 +20,9 @@
     "editor.defaultFormatter": "rust-lang.rust-analyzer",
     "editor.formatOnSave": true
   },
+  "[markdown]": {
+    "editor.formatOnSave": true
+  },
   "files.watcherExclude": {
     "**/target": true
   }

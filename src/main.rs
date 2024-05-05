@@ -4,13 +4,12 @@ mod config;
 mod helpers;
 mod models;
 use config::globals::CONFIG;
-use crossterm::event;
 use helpers::engine::{get_data, get_dataframe, process_data};
 use helpers::excel::{open_xlsx, write_to_excel_file_refac};
 use polars::prelude::*;
 use std::collections::HashMap;
 use std::env;
-use std::io::{self, stdin, Write};
+use std::io::{stdin, stdout, Read, Write};
 use std::path::PathBuf;
 
 fn get_path(filename: &str) -> String {
@@ -37,8 +36,8 @@ fn main() {
     }
 
     let mut min_date = String::new();
-    print!("Enter a search date: ");
-    io::stdout().flush().expect("Failed to flush stdout");
+    print!("Enter a min search date: ");
+    stdout().flush().expect("Failed to flush stdout");
     stdin()
         .read_line(&mut min_date)
         .expect("Failed to read line");
@@ -115,24 +114,19 @@ fn main() {
         .collect()
         .expect("Failed to join dataframes");
 
-    let _output_filepath = get_path(CONFIG.output_file.as_str());
-    write_to_excel_file_refac(&_output_filepath, cons_df.clone())
-        .expect("Failed to generate Excel");
+    let output_filepath = format!(
+        "{}_{}.xlsx",
+        CONFIG.output_file_prefix_2.as_str(),
+        CONFIG.datetime_suffix.as_str()
+    );
+    write_to_excel_file_refac(&output_filepath, cons_df.clone()).expect("Failed to generate Excel");
 
     println!("Data has been processed...");
-    println!("The Excel file was generated in {}", _output_filepath);
+    println!("The Excel file was generated in {}", output_filepath);
     println!("Showing the first 5 rows...");
     println!("{:?}", cons_df.head(Some(5)));
 
-    println!("Press any key to close...");
-    io::stdout().flush().expect("Failed to flush stdout");
-    crossterm::terminal::enable_raw_mode().expect("Failed to enable raw mode");
-    loop {
-        if event::poll(std::time::Duration::from_secs(0)).expect("Failed to poll event") {
-            if let event::Event::Key(_) = event::read().expect("Failed to read event") {
-                break;
-            }
-        }
-    }
-    crossterm::terminal::disable_raw_mode().expect("Failed to disable raw mode");
+    println!("Press 'ENTER' to close...");
+    stdout().flush().expect("Failed to flush stdout");
+    stdin().read(&mut [0]).expect("Failed to read line");
 }

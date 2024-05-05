@@ -1,3 +1,4 @@
+use chrono::Local;
 use dotenv::dotenv;
 use std::env;
 
@@ -7,7 +8,9 @@ pub struct Config {
     pub first_sheet: String,
     pub second_sheet: String,
     pub third_sheet: String,
-    pub output_file: String,
+    pub output_file_prefix_1: String,
+    pub output_file_prefix_2: String,
+    pub datetime_suffix: String,
 }
 
 impl Config {
@@ -19,7 +22,11 @@ impl Config {
         let first_sheet: String = env::var("FIRST_SHEET").expect("FIRST_SHEET must be set");
         let second_sheet: String = env::var("SECOND_SHEET").expect("SECOND_SHEET must be set");
         let third_sheet: String = env::var("THIRD_SHEET").expect("THIRD_SHEET must be set");
-        let output_file: String = env::var("OUTPUT_FILE").expect("OUTPUT_FILE must be set");
+        let output_file_prefix_1: String =
+            env::var("OUTPUT_FILE_PREFIX_1").expect("OUTPUT_FILE_PREFIX_1 must be set");
+        let output_file_prefix_2: String =
+            env::var("OUTPUT_FILE_PREFIX_2").expect("OUTPUT_FILE_PREFIX_2 must be set");
+        let datetime_suffix: String = Local::now().format("%Y%m%d%H%M%S").to_string();
 
         Config {
             example_csv,
@@ -27,7 +34,9 @@ impl Config {
             first_sheet,
             second_sheet,
             third_sheet,
-            output_file,
+            output_file_prefix_1,
+            output_file_prefix_2,
+            datetime_suffix,
         }
     }
 }
